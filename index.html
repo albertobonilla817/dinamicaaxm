@@ -3,170 +3,232 @@
 <head>
   <meta charset="UTF-8" />
   <title>Calculadora de Precio de Domicilio - Armenia, Quindío</title>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCIsrJQVCsWXxer4Bj77nyr8YL1QnO58bc&libraries=places,geometry"></script>
+  <!-- Google Places API (solo para autocompletar) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCIsrJQVCsWXxer4Bj77nyr8YL1QnO58bc&libraries=places"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 0; }
-    header { background-color: #1976d2; color: white; padding: 15px; text-align: center; }
-    #map { width: 100%; height: 350px; border-radius: 8px; margin: 20px 0; }
-    .container {
-      width: 420px; margin: 20px auto; background: white; padding: 25px;
-      border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    /* Colores basados en logo que mencionaste: azul oscuro, azul claro, blanco */
+    body {
+      font-family: Arial, sans-serif;
+      background: #e3f2fd; /* azul claro */
+      margin: 0; padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      align-items: center;
+      color: #0d47a1; /* azul oscuro */
     }
-    input, button {
-      font-size: 1rem; padding: 10px; width: 100%; margin: 12px 0;
-      border-radius: 6px; border: 1px solid #bbb; box-sizing: border-box;
+    header {
+      background-color: #0d47a1; /* azul oscuro */
+      width: 100%;
+      padding: 20px 0;
+      text-align: center;
+      color: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      margin-bottom: 30px;
+    }
+    header img {
+      max-height: 60px;
+      vertical-align: middle;
+      margin-bottom: 8px;
+    }
+    header h1 {
+      margin: 8px 0 0 0;
+      font-weight: normal;
+    }
+    main {
+      background: white;
+      padding: 30px 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(13,71,161,0.2);
+      width: 400px;
+      max-width: 90vw;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+      color: #0d47a1;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 1rem;
+      border: 2px solid #1976d2; /* azul mediano */
+      border-radius: 6px;
+      box-sizing: border-box;
+      margin-bottom: 20px;
+      transition: border-color 0.3s ease;
+    }
+    input[type="text"]:focus {
+      border-color: #0d47a1; /* azul oscuro */
+      outline: none;
+      background-color: #e8f0fe;
     }
     button {
-      background-color: #1976d2; color: white; border: none; font-weight: bold;
-      cursor: pointer; transition: background-color 0.3s ease;
+      width: 100%;
+      padding: 12px;
+      font-size: 1.1rem;
+      background-color: #0d47a1; /* azul oscuro */
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
     }
-    button:hover { background-color: #115293; }
-    #precio {
-      margin-top: 20px; font-weight: bold; text-align: center; font-size: 1.2rem;
-      background-color: #e3f2fd; color: #0d47a1; padding: 12px; border-radius: 8px;
+    button:hover {
+      background-color: #144d8e;
     }
-    #error { margin-top: 12px; color: #b71c1c; font-weight: bold; text-align: center; }
+    #resultado {
+      margin-top: 25px;
+      padding: 15px;
+      background-color: #e3f2fd; /* azul claro */
+      color: #0d47a1;
+      font-weight: bold;
+      font-size: 1.3rem;
+      text-align: center;
+      border-radius: 8px;
+      box-shadow: inset 0 0 10px rgba(13,71,161,0.15);
+    }
+    #error {
+      margin-top: 15px;
+      color: #b71c1c; /* rojo oscuro para errores */
+      font-weight: bold;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Calcula el precio de tu domicilio</h1>
-    <p>Solo para envíos dentro de Armenia, Quindío, Colombia</p>
+    <!-- Reemplaza "logo.png" con la ruta o URL de tu logo -->
+    <img src="logo.png" alt="Logo" />
+    <h1>Calculadora de Precio de Domicilio</h1>
+    <p>Solo envíos dentro de Armenia, Quindío, Colombia</p>
   </header>
-  <div class="container">
-    <div id="map"></div>
-    <input id="destino" type="text" placeholder="Ingresa la dirección de destino" autocomplete="off" />
-    <button onclick="calcularPrecio()">Calcular Precio</button>
-    <p id="precio"></p>
-    <p id="error"></p>
-  </div>
+  <main>
+    <label for="origen">Dirección de Origen</label>
+    <input id="origen" type="text" placeholder="Ingresa dirección de origen" autocomplete="off" />
+
+    <label for="destino">Dirección de Destino</label>
+    <input id="destino" type="text" placeholder="Ingresa dirección de destino" autocomplete="off" />
+
+    <button id="calcularBtn">Calcular Precio</button>
+
+    <div id="resultado"></div>
+    <div id="error"></div>
+  </main>
+
   <script>
-    // Límites aproximados de Armenia, Quindío
+    // Limites aproximados de Armenia, Quindío (lat, lng)
     const LIMITE = {
       norte: 4.5915,
       sur: 4.5133,
       este: -75.5948,
       oeste: -75.6810
     };
-    let map, origen, autocomplete, marcadorOrigen, marcadorDestino;
 
-    function estaDentroDeArmenia(coord) {
+    function estaDentroDeArmenia(latLng) {
       return (
-        coord.lat() <= LIMITE.norte &&
-        coord.lat() >= LIMITE.sur &&
-        coord.lng() >= LIMITE.oeste &&
-        coord.lng() <= LIMITE.este
+        latLng.lat() <= LIMITE.norte &&
+        latLng.lat() >= LIMITE.sur &&
+        latLng.lng() >= LIMITE.oeste &&
+        latLng.lng() <= LIMITE.este
       );
     }
 
-    function initMap() {
-      map = new google.maps.Map(document.getElementById('map'), {
-        zoom: 13,
-        center: { lat: 4.535, lng: -75.6757 } // Centro Armenia
-      });
+    let autocompleteOrigen, autocompleteDestino;
 
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            origen = new google.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-            if (!estaDentroDeArmenia(origen)) {
-              mostrarError('Tu ubicación está fuera de Armenia, Quindío. No se puede calcular el precio.');
-              origen = null;
-              return;
-            }
-            map.setCenter(origen);
-            marcadorOrigen = new google.maps.Marker({
-              position: origen,
-              map: map,
-              label: 'Origen',
-              icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-            });
-          },
-          () => {
-            mostrarError('Permiso de ubicación denegado. No se puede calcular el precio sin ubicación.');
-            origen = null;
-          }
-        );
-      } else {
-        mostrarError('Geolocalización no soportada por tu navegador.');
-        origen = null;
-      }
+    function iniciarAutocompletar() {
+      const inputOrigen = document.getElementById('origen');
+      const inputDestino = document.getElementById('destino');
 
-      autocomplete = new google.maps.places.Autocomplete(document.getElementById('destino'), {
+      autocompleteOrigen = new google.maps.places.Autocomplete(inputOrigen, {
         componentRestrictions: { country: 'co' },
-        fields: ['geometry', 'formatted_address', 'name'],
+        fields: ['geometry', 'formatted_address'],
+        strictBounds: false,
       });
-      autocomplete.addListener('place_changed', () => {
-        limpiarError();
+
+      autocompleteDestino = new google.maps.places.Autocomplete(inputDestino, {
+        componentRestrictions: { country: 'co' },
+        fields: ['geometry', 'formatted_address'],
+        strictBounds: false,
       });
     }
 
-    function mostrarError(msg) {
-      document.getElementById('error').textContent = msg;
-      document.getElementById('precio').textContent = '';
+    function mostrarError(mensaje) {
+      document.getElementById('error').textContent = mensaje;
+      document.getElementById('resultado').textContent = '';
     }
+
     function limpiarError() {
       document.getElementById('error').textContent = '';
     }
 
-    function calcularPrecio() {
-      limpiarError();
-      if (!origen) {
-        mostrarError('Por favor permite el acceso a tu ubicación.');
-        return;
+    function calcularDistanciaMetros(origenLatLng, destinoLatLng) {
+      // Usamos la fórmula haversine para distancia en metros
+      function rad(x) {
+        return x * Math.PI / 180;
       }
-      const place = autocomplete.getPlace();
-      if (!place || !place.geometry) {
-        const geocoder = new google.maps.Geocoder();
-        const direccion = document.getElementById('destino').value;
-        if (!direccion) {
-          mostrarError('Por favor ingresa una dirección de destino.');
-          return;
-        }
-        geocoder.geocode({ address: direccion + ', Armenia, Quindío, Colombia' }, (results, status) => {
-          if (status === 'OK' && results[0]) {
-            procesarDestino(results[0].geometry.location);
-          } else {
-            mostrarError('No se encontró la dirección ingresada dentro de Armenia, Quindío.');
-          }
-        });
-      } else {
-        procesarDestino(place.geometry.location);
-      }
+      const R = 6378137; // Radio tierra en metros
+      const dLat = rad(destinoLatLng.lat() - origenLatLng.lat());
+      const dLong = rad(destinoLatLng.lng() - origenLatLng.lng());
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(rad(origenLatLng.lat())) * Math.cos(rad(destinoLatLng.lat())) *
+                Math.sin(dLong / 2) * Math.sin(dLong / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const d = R * c;
+      return d;
     }
 
-    function procesarDestino(destinoCoord) {
-      if (!estaDentroDeArmenia(destinoCoord)) {
-        mostrarError('La dirección destino está fuera de Armenia, Quindío. No se puede calcular el precio.');
-        return;
-      }
-      if (marcadorDestino) marcadorDestino.setMap(null);
-      marcadorDestino = new google.maps.Marker({
-        position: destinoCoord,
-        map: map,
-        label: 'Destino',
-        icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-      });
-      map.panTo(destinoCoord);
-
-      const distanciaMetros = google.maps.geometry.spherical.computeDistanceBetween(origen, destinoCoord);
-
-      let precio;
-      if (distanciaMetros <= 700) precio = 5000;
-      else if (distanciaMetros <= 2500) precio = 6000;
-      else if (distanciaMetros <= 6000) precio = 7000;
-      else if (distanciaMetros <= 7000) precio = 8000;
-      else {
-        mostrarError('La distancia es mayor a 7 km. No se puede calcular el precio.');
-        return;
-      }
-
-      document.getElementById('precio').textContent =
-        'Precio del domicilio: $' + precio.toLocaleString('es-CO') + ' COP';
-      limpiarError();
+    function calcularPrecio(distancia) {
+      if (distancia <= 700) return 5000;
+      else if (distancia <= 2500) return 6000;
+      else if (distancia <= 7000) return 7000;
+      else return 8000;
     }
 
-    window.onload = initMap;
+    function manejarCalculo() {
+      limpiarError();
+      const placeOrigen = autocompleteOrigen.getPlace();
+      const placeDestino = autocompleteDestino.getPlace();
+
+      if (!placeOrigen || !placeOrigen.geometry) {
+        mostrarError('Por favor ingresa y selecciona una dirección válida de origen dentro de Armenia.');
+        return;
+      }
+      if (!placeDestino || !placeDestino.geometry) {
+        mostrarError('Por favor ingresa y selecciona una dirección válida de destino dentro de Armenia.');
+        return;
+      }
+
+      const origenLatLng = placeOrigen.geometry.location;
+      const destinoLatLng = placeDestino.geometry.location;
+
+      if (!estaDentroDeArmenia(origenLatLng)) {
+        mostrarError('La dirección de origen está fuera de los límites de Armenia, Quindío.');
+        return;
+      }
+      if (!estaDentroDeArmenia(destinoLatLng)) {
+        mostrarError('La dirección de destino está fuera de los límites de Armenia, Quindío.');
+        return;
+      }
+
+      const distancia = calcularDistanciaMetros(origenLatLng, destinoLatLng);
+      const precio = calcularPrecio(distancia);
+
+      document.getElementById('resultado').textContent =
+        `Distancia: ${(distancia / 1000).toFixed(2)} km - Precio del domicilio: $${precio.toLocaleString('es-CO')} COP`;
+    }
+
+    // Inicializar Autocomplete cuando Google Maps API cargue
+    function init() {
+      iniciarAutocompletar();
+
+      // Botón calcular
+      document.getElementById('calcularBtn').addEventListener('click', manejarCalculo);
+    }
+
+    window.onload = init;
   </script>
 </body>
 </html>
