@@ -2,68 +2,180 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Calculadora de Domicilio - Armenia, Quindío</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <title>Calculadora de Precios de Domicilio - Armenia, Quindío</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #e3f2fd; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
-    header { width: 100%; background: #0d47a1; color: white; text-align: center; padding: 18px 0 10px 0; margin-bottom: 0px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-    main { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(13,71,161,0.12); padding: 18px 20px; width: 370px; margin-top: 20px; text-align: center; }
-    label { font-weight: bold; color: #0d47a1; margin-bottom: 6px; display: block; text-align: left; }
+    header { width: 100%; background: #0d47a1; color: white; text-align: center; padding: 16px 0 10px 0; margin-bottom: 0px; }
+    main { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(13,71,161,0.12); padding: 18px 20px; width: 355px; margin-top: 18px; text-align: center; }
+    label { font-weight: bold; color: #0d47a1; margin: 10px 0 5px 0; display: block; text-align: left; }
     .autocomplete { position: relative; }
-    input[type="text"] { width: 100%; padding: 9px 10px; border: 2px solid #1976d2; border-radius: 6px; margin-bottom: 2px; font-size: 1rem; background: #f4fbff; color: #144d8e; }
-    .suggestions { position: absolute; left: 0; right: 0; top: 40px; background: #fff; border: 1px solid #1976d2; z-index: 99; max-height: 145px; overflow-y: auto; border-radius: 0 0 6px 6px; }
+    input[type="text"] { width: 100%; padding: 9px 10px; border: 2px solid #1976d2; border-radius: 6px; margin-bottom: 12px; font-size: 1rem; background: #f4fbff; color: #144d8e; }
+    .suggestions { position: absolute; left: 0; right: 0; top: 40px; background: #fff; border: 1px solid #1976d2; z-index: 99; max-height: 140px; overflow-y: auto; border-radius: 0 0 6px 6px; }
     .suggestion-item { padding: 7px 11px; cursor: pointer; border-bottom: 1px solid #e3f2fd;}
     .suggestion-item:last-child { border-bottom: none; }
     .suggestion-item:hover { background: #e3f2fd; }
-    button { width: 100%; background: #1976d2; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: background 0.3s; }
+    button { width: 100%; background: #1976d2; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 1.08rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: background 0.3s; }
     button:hover { background: #0d47a1; }
-    #map { width: 370px; height: 290px; border-radius: 10px; margin: 15px 0 13px 0; box-shadow: 0 2px 10px rgba(13, 71, 161, 0.1);}
-    #resultado { background: #e3f2fd; color: #0d47a1; font-weight: bold; font-size: 1.13rem; padding: 12px; border-radius: 7px; margin-top: 13px; min-height: 20px; }
-    #error { background: #fbe9e7; color: #b71c1c; border-radius: 7px; margin-top: 10px; font-weight: bold; font-size: 1rem; padding: 7px; min-height: 18px; }
+    #map { width: 355px; height: 240px; border-radius: 10px; margin: 10px 0 10px 0; }
+    #resultado { background: #e3f2fd; color: #0d47a1; font-weight: bold; font-size: 1.13rem; padding: 12px; border-radius: 7px; margin-top: 10px; min-height: 20px; }
+    #error { background: #fbe9e7; color: #b71c1c; border-radius: 7px; margin-top: 6px; font-weight: bold; font-size: 1rem; padding: 7px; min-height: 18px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Calculadora de Precios de Domicilio</h1>
-    <div>Armenia, Quindío, Colombia</div>
-  </header>
-  <main>
-    <label for="destino">Dirección o barrio de destino</label>
-    <div class="autocomplete">
-      <input type="text" id="destino" placeholder="Escribe dirección o barrio" autocomplete="off" />
-      <div id="sugerencias"></div>
-    </div>
-    <button id="calcularBtn">Calcular precio</button>
-    <div id="map"></div>
-    <div id="resultado"></div>
-    <div id="error"></div>
-  </main>
-  <script>
-    const LIMITE = {norte: 4.5915, sur: 4.5133, este: -75.5948, oeste: -75.681};
+<header>
+  <h1>Calculadora de Precios de Domicilio</h1>
+  <div>Armenia, Quindío, Colombia</div>
+</header>
+<main>
+  <label for="destino">Dirección de destino</label>
+  <div class="autocomplete">
+    <input type="text" id="destino" placeholder="Escribe dirección o barrio" autocomplete="off" />
+    <div id="sugerencias"></div>
+  </div>
+  <button id="calcularBtn">Calcular precio</button>
+  <div id="map"></div>
+  <div id="resultado"></div>
+  <div id="error"></div>
+</main>
+<script>
+const LIMITES = {norte: 4.5915, sur: 4.5133, este: -75.5948, oeste: -75.681};
+let map, marcadorOrigen, marcadorDestino, userLatLng, destinoSeleccionado = null;
 
-    let map, marcadorOrigen, marcadorDestino, userLatLng = null, destinoSeleccionado = null;
+// Chequea si una coordenada está dentro de Armenia
+function dentroArmenia(lat, lng) {
+  return lat <= LIMITES.norte && lat >= LIMITES.sur && lng >= LIMITES.oeste && lng <= LIMITES.este;
+}
+function mostrarError(msg) {
+  document.getElementById('resultado').textContent = "";
+  document.getElementById('error').textContent = msg;
+}
+function limpiarError() { document.getElementById('error').textContent = ""; }
+function mostrarResultado(msg) { document.getElementById('resultado').innerHTML = msg; }
+function limpiarResultado() { document.getElementById('resultado').textContent = ''; }
+function calcularDistancia(origen, destino) {
+  const R = 6378137;
+  const dLat = (destino.lat - origen.lat) * Math.PI / 180;
+  const dLng = (destino.lng - origen.lng) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(origen.lat * Math.PI / 180) * Math.cos(destino.lat * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+function calcularPrecio(d) {
+  if (d <= 700) return 5000;
+  if (d > 700 && d <= 2500) return 6000;
+  if (d > 2500 && d <= 6000) return 7000;
+  if (d > 6000 && d <= 8000) return 8000;
+  return null;
+}
+function iniciarMapa(lat, lng) {
+  map = L.map('map').setView([lat, lng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+  marcadorOrigen = L.marker([lat, lng]).addTo(map).bindPopup("Tu ubicación").openPopup();
+}
 
-    function estaDentroDeArmenia(lat, lng) {
-      return lat <= LIMITE.norte && lat >= LIMITE.sur && lng >= LIMITE.oeste && lng <= LIMITE.este;
+// AUTOCOMPLETADO Photon
+const inputDestino = document.getElementById('destino');
+const sugerenciasBox = document.getElementById('sugerencias');
+inputDestino.addEventListener('input', async function() {
+  const texto = inputDestino.value.trim();
+  destinoSeleccionado = null;
+  limpiarError(); limpiarResultado(); sugerenciasBox.innerHTML = "";
+  if (texto.length < 2) return;
+  // Photon busca solo en Armenia, Quindío
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(texto)}&lat=4.535&lon=-75.6757&limit=7&lang=es`;
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.features && data.features.length) {
+      sugerenciasBox.innerHTML = '';
+      sugerenciasBox.className = "suggestions";
+      let puso = false;
+      data.features.forEach(f=> {
+        const prop = f.properties;
+        // Filtro ciudad
+        if ((prop.city && prop.city.toLowerCase() === "armenia") &&
+            (prop.state && prop.state.toLowerCase().includes("quind")) &&
+            (prop.country && prop.country.toLowerCase().includes("colombi"))) {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = "suggestion-item";
+          itemDiv.textContent = prop.label || (prop.name + ", Armenia");
+          itemDiv.onclick = ()=> {
+            inputDestino.value = prop.label || (prop.name + ", Armenia");
+            sugerenciasBox.innerHTML = "";
+            destinoSeleccionado = { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], label: prop.label || (prop.name + ", Armenia") };
+          };
+          sugerenciasBox.appendChild(itemDiv); puso = true;
+        }
+      });
+      if (!puso) sugerenciasBox.innerHTML = '';
     }
-    function mostrarError(msg) {
-      document.getElementById('resultado').textContent = "";
-      document.getElementById('error').textContent = msg;
+  } catch(e) {}
+});
+document.addEventListener('click', function(e){
+  if (!inputDestino.contains(e.target) && !sugerenciasBox.contains(e.target)) {
+    sugerenciasBox.innerHTML = "";
+  }
+});
+
+document.addEventListener("DOMContentLoaded", function() {
+  limpiarResultado(); limpiarError();
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      if (!dentroArmenia(lat, lng)) {
+        mostrarError('Tu ubicación no está dentro de Armenia, Quindío.');
+        document.getElementById('calcularBtn').disabled = true;
+        return;
+      }
+      userLatLng = {lat, lng};
+      iniciarMapa(lat, lng);
+    }, function(error) {
+      let msg = "No se pudo obtener tu ubicación.";
+      if (error.code === 1) msg = "Se denegó el permiso para usar la ubicación.";
+      mostrarError(msg + " No se puede calcular el domicilio.");
+      document.getElementById('calcularBtn').disabled = true;
+    }, {enableHighAccuracy: true, timeout: 10000});
+  } else {
+    mostrarError("Este navegador no soporta geolocalización.");
+    document.getElementById('calcularBtn').disabled = true;
+  }
+  document.getElementById('calcularBtn').onclick = function() {
+    limpiarResultado(); limpiarError();
+    if (!userLatLng) {
+      mostrarError("Primero es necesario obtener tu ubicación.");
+      return;
     }
-    function limpiarError() { document.getElementById('error').textContent = ""; }
-    function mostrarResultado(msg) { document.getElementById('resultado').innerHTML = msg; }
-    function limpiarResultado() { document.getElementById('resultado').textContent = ''; }
-    function calcularDistancia(origen, destino) {
-      const R = 6378137;
-      const dLat = (destino.lat - origen.lat) * Math.PI / 180;
-      const dLng = (destino.lng - origen.lng) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(origen.lat * Math.PI / 180) * Math.cos(destino.lat * Math.PI / 180) *
-        Math.sin(dLng/2) * Math.sin(dLng/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
+    if (!destinoSeleccionado) {
+      mostrarError("Por favor escribe y selecciona una dirección o barrio de la lista sugerida.");
+      return;
     }
-    function calcularPrecio(d) {
-      if (d <= 700) return 5000;
-      if     
+    const destinoLatLng = {lat: destinoSeleccionado.lat, lng: destinoSeleccionado.lng};
+    if (!dentroArmenia(destinoLatLng.lat, destinoLatLng.lng)) {
+      mostrarError("La dirección destino está fuera de Armenia, Quindío.");
+      return;
+    }
+    const distancia = calcularDistancia(userLatLng, destinoLatLng);
+    const precio = calcularPrecio(distancia);
+    if (marcadorDestino) map.removeLayer(marcadorDestino);
+    marcadorDestino = L.marker([destinoLatLng.lat, destinoLatLng.lng]).addTo(map).bindPopup("Destino").openPopup();
+    map.fitBounds([[userLatLng.lat, userLatLng.lng],[destinoLatLng.lat, destinoLatLng.lng]], {padding: [25,25]});
+    if (precio) {
+      mostrarResultado(
+        `Distancia: ${(distancia/1000).toFixed(2)} km<br>
+         <span style="color:#1976d2;">Precio del domicilio: <b>$${precio.toLocaleString('es-CO')}</b> COP</span>`
+      );
+    } else {
+      mostrarError("La distancia entre tu ubicación y el destino supera los 8 km. No es posible calcular el precio.");
+    }
+  }
+});
+</script>
+</body>
+</html>
