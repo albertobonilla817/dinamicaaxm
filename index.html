@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Calculadora de Precios de Domicilio - Armenia, Quindío</title>
+  <meta charset="UTF-8">
+  <title>Calculadora de Domicilio - Armenia Quindío</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #e3f2fd; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
-    header { width: 100%; background: #0d47a1; color: white; text-align: center; padding: 16px 0 10px 0; margin-bottom: 0px; }
-    main { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(13,71,161,0.12); padding: 18px 20px; width: 355px; margin-top: 18px; text-align: center; }
-    label { font-weight: bold; color: #0d47a1; margin: 10px 0 5px 0; display: block; text-align: left; }
+    header { width: 100%; background: #0d47a1; color: white; text-align: center; padding: 16px 0 10px 0; }
+    main { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(13,71,161,0.12); padding: 18px 20px; width: 350px; margin-top: 18px; text-align: center; }
+    label { font-weight: bold; color: #0d47a1; margin: 8px 0 5px 0; display: block; text-align: left; }
     .autocomplete { position: relative; }
-    input[type="text"] { width: 100%; padding: 9px 10px; border: 2px solid #1976d2; border-radius: 6px; margin-bottom: 12px; font-size: 1rem; background: #f4fbff; color: #144d8e; }
-    .suggestions { position: absolute; left: 0; right: 0; top: 40px; background: #fff; border: 1px solid #1976d2; z-index: 99; max-height: 140px; overflow-y: auto; border-radius: 0 0 6px 6px; }
+    input[type="text"] { width: 100%; padding: 9px 10px; border: 2px solid #1976d2; border-radius: 6px; margin-bottom: 10px; font-size: 1rem; background: #f4fbff; color: #144d8e; }
+    .suggestions { position: absolute; left: 0; right: 0; top: 38px; background: #fff; border: 1px solid #1976d2; z-index: 99; max-height: 140px; overflow-y: auto; border-radius: 0 0 6px 6px; }
     .suggestion-item { padding: 7px 11px; cursor: pointer; border-bottom: 1px solid #e3f2fd;}
     .suggestion-item:last-child { border-bottom: none; }
     .suggestion-item:hover { background: #e3f2fd; }
     button { width: 100%; background: #1976d2; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 1.08rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: background 0.3s; }
     button:hover { background: #0d47a1; }
-    #map { width: 355px; height: 240px; border-radius: 10px; margin: 10px 0 10px 0; }
-    #resultado { background: #e3f2fd; color: #0d47a1; font-weight: bold; font-size: 1.13rem; padding: 12px; border-radius: 7px; margin-top: 10px; min-height: 20px; }
+    #map { width: 350px; height: 220px; border-radius: 10px; margin: 10px 0 10px 0; }
+    #resultado { background: #e3f2fd; color: #0d47a1; font-weight: bold; font-size: 1.11rem; padding: 12px; border-radius: 7px; margin-top: 10px; min-height: 20px; }
     #error { background: #fbe9e7; color: #b71c1c; border-radius: 7px; margin-top: 6px; font-weight: bold; font-size: 1rem; padding: 7px; min-height: 18px; }
   </style>
 </head>
@@ -80,43 +80,46 @@ function iniciarMapa(lat, lng) {
   marcadorOrigen = L.marker([lat, lng]).addTo(map).bindPopup("Tu ubicación").openPopup();
 }
 
-// AUTOCOMPLETADO Photon
+// AUTOCOMPLETADO Pelias/geocode.earth
 const inputDestino = document.getElementById('destino');
 const sugerenciasBox = document.getElementById('sugerencias');
+
 inputDestino.addEventListener('input', async function() {
   const texto = inputDestino.value.trim();
   destinoSeleccionado = null;
   limpiarError(); limpiarResultado(); sugerenciasBox.innerHTML = "";
   if (texto.length < 2) return;
-  // Photon busca solo en Armenia, Quindío
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(texto)}&lat=4.535&lon=-75.6757&limit=7&lang=es`;
+  // Usa el endpoint demo de geocode.earth (Pelias)
+  const bbox = "-75.681,4.5133,-75.5948,4.5915"; // Armenia bounding box (w,s,e,n)
+  const url = `https://api.geocode.earth/v1/autocomplete?text=${encodeURIComponent(texto)}, Armenia, Quindío, Colombia&size=8&boundary.rect.min_lat=4.5133&boundary.rect.max_lat=4.5915&boundary.rect.min_lon=-75.681&boundary.rect.max_lon=-75.5948&api_key=ge-1e5ffbe18da943a2`;
+
   try {
-    const resp = await fetch(url);
+    const resp = await fetch(url, {headers:{"Accept-Language":"es"}});
     const data = await resp.json();
     if (data.features && data.features.length) {
       sugerenciasBox.innerHTML = '';
       sugerenciasBox.className = "suggestions";
       let puso = false;
-      data.features.forEach(f=> {
-        const prop = f.properties;
-        // Filtro ciudad
-        if ((prop.city && prop.city.toLowerCase() === "armenia") &&
-            (prop.state && prop.state.toLowerCase().includes("quind")) &&
-            (prop.country && prop.country.toLowerCase().includes("colombi"))) {
+      data.features.forEach(f => {
+        if (
+          f.properties.locality && f.properties.locality.toLowerCase() === "armenia" &&
+          f.properties.region && f.properties.region.toLowerCase().includes("quind") &&
+          f.properties.country && f.properties.country.toLowerCase().includes("colombi")
+        ) {
           const itemDiv = document.createElement('div');
           itemDiv.className = "suggestion-item";
-          itemDiv.textContent = prop.label || (prop.name + ", Armenia");
+          itemDiv.textContent = f.properties.label || f.properties.name;
           itemDiv.onclick = ()=> {
-            inputDestino.value = prop.label || (prop.name + ", Armenia");
+            inputDestino.value = f.properties.label || f.properties.name;
             sugerenciasBox.innerHTML = "";
-            destinoSeleccionado = { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], label: prop.label || (prop.name + ", Armenia") };
+            destinoSeleccionado = { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], label: f.properties.label || f.properties.name };
           };
           sugerenciasBox.appendChild(itemDiv); puso = true;
         }
       });
       if (!puso) sugerenciasBox.innerHTML = '';
     }
-  } catch(e) {}
+  } catch(e){}
 });
 document.addEventListener('click', function(e){
   if (!inputDestino.contains(e.target) && !sugerenciasBox.contains(e.target)) {
