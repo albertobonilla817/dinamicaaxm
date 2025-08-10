@@ -1,118 +1,111 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculador de Precios - DINÁMICA AXM</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #0d1b2a; color: white; }
-        header { background-color: #1b263b; padding: 15px; text-align: center; }
-        header img { height: 60px; vertical-align: middle; }
-        header h1 { display: inline; margin-left: 10px; font-size: 1.5em; color: #00b4d8; }
-        #map { height: 300px; }
-        .container { padding: 15px; }
-        label { display: block; margin-top: 10px; }
-        input { width: 100%; padding: 8px; margin-top: 5px; border: none; border-radius: 5px; }
-        .result { margin-top: 15px; background: #1b263b; padding: 10px; border-radius: 5px; display: flex; align-items: center; justify-content: space-between; }
-        .status-icon { font-size: 1.5em; }
-        .loading { animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculador de Precios - DINÁMICA AXM</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #0d1b2a; color: white; }
+    header { background-color: #1b263b; padding: 15px; text-align: center; }
+    header img { height: 60px; vertical-align: middle; }
+    header h1 { display: inline; margin-left: 10px; font-size: 1.5em; color: #00b4d8; }
+    #map { height: 300px; }
+    .container { padding: 15px; }
+    label { display: block; margin-top: 10px; }
+    input { width: 100%; padding: 8px; margin-top: 5px; border: none; border-radius: 5px; }
+    .result { margin-top: 15px; background: #1b263b; padding: 10px; border-radius: 5px; display: flex; align-items: center; justify-content: space-between; }
+    .loading { font-size: 1.2em; color: #ffd60a; }
+    .success { font-size: 1.2em; color: #06d6a0; }
+</style>
 </head>
 <body>
-    <header>
-        <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" alt="Logo">
-        <h1>DINÁMICA AXM - Calculador de Precios</h1>
-    </header>
+<header>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" alt="Logo">
+    <h1>DINÁMICA AXM - Calculador de Precios</h1>
+</header>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <div class="container">
-        <label>Dirección de recogida:</label>
-        <input type="text" id="start" placeholder="Ej: Calle 10 #15-20, Armenia Quindío">
-        
-        <label>Dirección de entrega:</label>
-        <input type="text" id="end" placeholder="Ej: Carrera 14 #8-30, Armenia Quindío">
-        
-        <div class="result">
-            <div>
-                <p>Distancia: <span id="distance">0</span> km</p>
-                <p>Total: <span id="price">$0</span> COP</p>
-            </div>
-            <div id="status" class="status-icon"></div>
+<div class="container">
+    <label>Dirección de recogida:</label>
+    <input type="text" id="start" placeholder="Ej: Calle 10 #15-20, Armenia Quindío">
+    
+    <label>Dirección de entrega:</label>
+    <input type="text" id="end" placeholder="Ej: Carrera 14 #8-30, Armenia Quindío">
+    
+    <div class="result">
+        <div>
+            <p>Distancia: <span id="distance">0</span> km</p>
+            <p>Total: <span id="price">$0</span> COP</p>
         </div>
+        <div id="status"></div>
     </div>
+</div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
-        let map = L.map('map').setView([4.5345, -75.6811], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-        }).addTo(map);
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    let map = L.map('map').setView([4.5345, -75.6811], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    let markers = [];
 
-        let startMarker, endMarker;
+    async function geocode(address) {
+        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}, Armenia, Quindío, Colombia`;
+        let res = await fetch(url);
+        let data = await res.json();
+        return data.length > 0 ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
+    }
 
-        function getPriceByDistance(distanceKm) {
-            if (distanceKm <= 2) return 5000;
-            if (distanceKm <= 4) return 6000;
-            if (distanceKm <= 6) return 7000;
-            return 8000;
+    function calcularTarifa(distancia) {
+        if (distancia <= 4) return 5000;
+        if (distancia <= 6) return 6000;
+        if (distancia <= 7) return 7000;
+        return 8000;
+    }
+
+    async function calculateRoute() {
+        let startAddress = document.getElementById('start').value;
+        let endAddress = document.getElementById('end').value;
+        if (!startAddress || !endAddress) return;
+
+        document.getElementById('status').innerHTML = '<span class="loading">⏳ Calculando...</span>';
+        
+        let startCoords = await geocode(startAddress);
+        let endCoords = await geocode(endAddress);
+
+        if (!startCoords || !endCoords) {
+            document.getElementById('status').innerHTML = '<span style="color:red;">❌ Dirección no encontrada</span>';
+            return;
         }
 
-        async function geocode(address) {
-            let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}, Armenia, Quindío, Colombia`;
-            let res = await fetch(url);
-            let data = await res.json();
-            return data.length > 0 ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
+        let routeUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords[1]},${startCoords[0]};${endCoords[1]},${endCoords[0]}?overview=false`;
+        let res = await fetch(routeUrl);
+        let data = await res.json();
+
+        if (data.routes && data.routes.length > 0) {
+            let distanceKm = (data.routes[0].distance / 1000).toFixed(2);
+            document.getElementById('distance').textContent = distanceKm;
+
+            let price = calcularTarifa(distanceKm);
+            document.getElementById('price').textContent = `$${price.toLocaleString('es-CO')}`;
+
+            document.getElementById('status').innerHTML = '<span class="success">✅</span>';
+
+            // Limpiar marcadores previos
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            // Mostrar marcadores solo al final
+            let startMarker = L.marker(startCoords).addTo(map).bindPopup("Recogida");
+            let endMarker = L.marker(endCoords).addTo(map).bindPopup("Entrega");
+            markers.push(startMarker, endMarker);
+            map.fitBounds([startCoords, endCoords]);
         }
+    }
 
-        async function calculateRoute() {
-            let startAddress = document.getElementById('start').value;
-            let endAddress = document.getElementById('end').value;
-            let statusIcon = document.getElementById('status');
+    document.getElementById('start').addEventListener('change', calculateRoute);
+    document.getElementById('end').addEventListener('change', calculateRoute);
+</script>
 
-            if (!startAddress || !endAddress) return;
-
-            statusIcon.textContent = "⏳";
-            statusIcon.classList.add("loading");
-
-            let startCoords = await geocode(startAddress);
-            let endCoords = await geocode(endAddress);
-
-            if (!startCoords || !endCoords) {
-                statusIcon.textContent = "❌";
-                statusIcon.classList.remove("loading");
-                return;
-            }
-
-            let routeUrl = `https://router.project-osrm.org/route/v1/driving/${startCoords[1]},${startCoords[0]};${endCoords[1]},${endCoords[0]}?overview=false`;
-            let res = await fetch(routeUrl);
-            let data = await res.json();
-
-            if (data.routes && data.routes.length > 0) {
-                let distanceKm = (data.routes[0].distance / 1000).toFixed(2);
-                document.getElementById('distance').textContent = distanceKm;
-
-                let price = getPriceByDistance(distanceKm);
-                document.getElementById('price').textContent = `$${price.toLocaleString('es-CO')}`;
-
-                // Mostrar puntos solo cuando el cálculo sea exitoso
-                if (startMarker) map.removeLayer(startMarker);
-                if (endMarker) map.removeLayer(endMarker);
-
-                startMarker = L.marker(startCoords).addTo(map).bindPopup("Recogida");
-                endMarker = L.marker(endCoords).addTo(map).bindPopup("Entrega");
-
-                map.fitBounds([startCoords, endCoords]);
-
-                statusIcon.textContent = "✅";
-                statusIcon.classList.remove("loading");
-            }
-        }
-
-        document.getElementById('start').addEventListener('change', calculateRoute);
-        document.getElementById('end').addEventListener('change', calculateRoute);
-    </script>
 </body>
 </html>
