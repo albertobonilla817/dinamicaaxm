@@ -1,146 +1,298 @@
-<!DOCTYPE html>
+<!doctype html>
+
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Calculadora de Domicilio - Armenia Quindío</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<style>
-body { font-family: Arial, sans-serif; background: #e3f2fd; margin: 0; padding: 0; display:flex; flex-direction:column; align-items:center;}
-header { width:100%; background:#0d47a1; color:white; text-align:center; padding:16px 0 12px 0;}
-main { background:#fff; border-radius:10px; box-shadow:0 2px 12px rgba(13,71,161,0.12); padding:17px 18px; width:355px; margin-top:17px; text-align:center;}
-label { font-weight:bold; color:#0d47a1; margin:8px 0 5px 0; display:block; text-align:left;}
-input[type="text"] { width:100%; padding:9px 10px; border:2px solid #1976d2; border-radius:6px; margin-bottom:12px; font-size:1rem; background:#f4fbff; color:#144d8e;}
-button { width:100%; background:#1976d2; color:white; border:none; border-radius:8px; padding:12px; font-size:1.08rem; font-weight:bold; cursor:pointer; margin-bottom:10px; transition:background 0.3s;}
-button:hover { background:#0d47a1; }
-#map { width:355px; height:220px; border-radius:10px; margin:10px 0 10px 0; }
-#resultado { background:#e3f2fd; color:#0d47a1; font-weight:bold; font-size:1.11rem; padding:12px; border-radius:7px; margin-top:10px; min-height:20px;}
-#error { background: #fbe9e7; color:#b71c1c; border-radius:7px; margin-top:6px; font-weight:bold; font-size:1rem; padding:7px; min-height:18px;}
-</style>
-</head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculador de Precios — DINÁMICA AXM</title>  <!-- Leaflet CSS -->  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-sA+tdkP0gqk1b7Z8v+gk0k6qkQbQ4v1p2v+3DgQ3rYw=" crossorigin=""/>  <style>
+    :root{
+      --azul-oscuro: #05264b; /* azul oscuro corporativo */
+      --azul-claro: #1976d2;
+      --blanco: #ffffff;
+      --card-bg: #093354;
+    }
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, Arial, sans-serif;background:linear-gradient(180deg,#021827 0%, #05264b 100%);color:var(--blanco)}
+
+    /* Cabecera fija */
+    header{
+      position:fixed;top:0;left:0;right:0;height:88px;display:flex;align-items:center;gap:16px;padding:12px 20px;background:linear-gradient(90deg, rgba(5,38,75,0.95), rgba(9,51,84,0.9));box-shadow:0 4px 18px rgba(0,0,0,0.35);z-index:1000
+    }
+    .brand{
+      display:flex;align-items:center;gap:12px;color:var(--blanco);
+    }
+    .logo{
+      width:64px;height:64px;border-radius:12px;background:var(--blanco);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--azul-oscuro);font-size:28px;flex-shrink:0
+    }
+    .brand h1{margin:0;font-size:20px;letter-spacing:1px}
+    .brand p{margin:0;font-size:12px;opacity:0.9}
+
+    main{display:grid;grid-template-columns:380px 1fr;gap:20px;padding:112px 20px 20px 20px;height:calc(100% - 112px)}
+
+    /* Panel izquierdo */
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));border-radius:16px;padding:18px;box-shadow:0 6px 18px rgba(1,10,20,0.4);height:100%;display:flex;flex-direction:column;gap:12px}
+    label{font-size:13px;color:#cfe7ff}
+    input[type="text"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--blanco);outline:none}
+    .suggestions{background:rgba(0,0,0,0.3);border-radius:8px;overflow:auto;max-height:180px}
+    .suggestion{padding:10px;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer}
+    .suggestion:hover{background:rgba(255,255,255,0.02)}
+
+    .info{margin-top:6px;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.03));font-size:15px}
+    .price{font-weight:800;font-size:22px;margin-top:6px}
+
+    /* Map */
+    #map{border-radius:16px;height:100%;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+
+    footer{position:fixed;left:20px;bottom:20px;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,0.03);font-size:13px}
+
+    /* Responsive */
+    @media(max-width:900px){
+      main{grid-template-columns:1fr;padding:100px 12px 12px 12px}
+      .panel{order:2}
+      #map{order:1;height:50vh}
+    }
+
+    /* small helper */
+    .muted{opacity:0.85;font-size:13px}
+  </style></head>
 <body>
-<header>
-  <h1>Calculadora de Precios de Domicilio</h1>
-  <div>Armenia, Quindío, Colombia</div>
-</header>
-<main>
-  <label for="destino">Dirección o barrio de destino</label>
-  <input type="text" id="destino" placeholder="Escribe dirección o barrio" autocomplete="off" />
-  <button id="calcularBtn">Calcular precio</button>
-  <div id="map"></div>
-  <div id="resultado"></div>
-  <div id="error"></div>
-</main>
-<script>
-const LIMITES = {norte: 4.5915, sur: 4.5133, este: -75.5948, oeste: -75.681};
-let map, marcadorOrigen, marcadorDestino, userLatLng;
+  <header>
+    <div class="brand">
+      <!-- Reemplaza "logo.png" por el logo real de tu empresa. Si no tienes, deja la caja blanca o añade tu imagen. -->
+      <div class="logo" id="logo">🦁</div>
+      <div>
+        <h1>DINÁMICA AXM</h1>
+        <p>Servicio de domicilios — Armenia, Quindío</p>
+      </div>
+    </div>
+    <div style="margin-left:auto;color:rgba(255,255,255,0.9);font-weight:600">Tarifa base: <span id="tarifaBaseText">$5.000</span> • $1.000 / km</div>
+  </header>  <main>
+    <aside class="panel">
+      <div>
+        <label for="origen">Dirección de recogida (origen)</label>
+        <input id="origen" type="text" placeholder="Escribe una dirección en Armenia, Quindío" autocomplete="off" />
+        <div id="sug-origen" class="suggestions" style="display:none"></div>
+      </div><div>
+    <label for="destino">Dirección de entrega (destino)</label>
+    <input id="destino" type="text" placeholder="Escribe la dirección de destino" autocomplete="off" />
+    <div id="sug-destino" class="suggestions" style="display:none"></div>
+  </div>
 
-// Chequea si una coordenada está dentro de Armenia
-function dentroArmenia(lat, lng) {
-  return lat <= LIMITES.norte && lat >= LIMITES.sur && lng >= LIMITES.oeste && lng <= LIMITES.este;
-}
-function mostrarError(msg) {
-  document.getElementById('resultado').textContent = "";
-  document.getElementById('error').textContent = msg;
-}
-function limpiarError() { document.getElementById('error').textContent = ""; }
-function mostrarResultado(msg) { document.getElementById('resultado').innerHTML = msg; }
-function limpiarResultado() { document.getElementById('resultado').textContent = ''; }
-function calcularDistancia(origen, destino) {
-  const R = 6378137;
-  const dLat = (destino.lat - origen.lat) * Math.PI / 180;
-  const dLng = (destino.lng - origen.lng) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(origen.lat * Math.PI / 180) * Math.cos(destino.lat * Math.PI / 180) *
-    Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-function calcularPrecio(d) {
-  if (d <= 700) return 5000;
-  if (d > 700 && d <= 2500) return 6000;
-  if (d > 2500 && d <= 6000) return 7000;
-  if (d > 6000 && d <= 8000) return 8000;
-  return null;
-}
-function iniciarMapa(lat, lng) {
-  map = L.map('map').setView([lat, lng], 14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
-  }).addTo(map);
-  marcadorOrigen = L.marker([lat, lng]).addTo(map).bindPopup("Tu ubicación").openPopup();
-}
+  <div class="info">
+    <div class="muted">Distancia estimada:</div>
+    <div id="distanciaText" style="font-weight:700;font-size:18px">—</div>
 
-document.addEventListener("DOMContentLoaded", function() {
-  limpiarResultado(); limpiarError();
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function(pos) {
-      const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      if (!dentroArmenia(lat, lng)) {
-        mostrarError('Tu ubicación no está dentro de Armenia, Quindío.');
-        document.getElementById('calcularBtn').disabled = true;
-        return;
-      }
-      userLatLng = {lat, lng};
-      iniciarMapa(lat, lng);
-    }, function(error) {
-      let msg = "No se pudo obtener tu ubicación.";
-      if (error.code === 1) msg = "Se denegó el permiso para usar la ubicación.";
-      mostrarError(msg + " No se puede calcular el domicilio.");
-      document.getElementById('calcularBtn').disabled = true;
-    }, {enableHighAccuracy: true, timeout: 10000});
-  } else {
-    mostrarError("Este navegador no soporta geolocalización.");
-    document.getElementById('calcularBtn').disabled = true;
-  }
+    <div style="margin-top:10px" class="muted">Tiempo estimado (según ruta):</div>
+    <div id="tiempoText" style="font-weight:700;font-size:16px">—</div>
 
-  document.getElementById('calcularBtn').onclick = async function() {
-    limpiarResultado(); limpiarError();
-    if (!userLatLng) {
-      mostrarError("Primero es necesario obtener tu ubicación.");
-      return;
-    }
-    const texto = document.getElementById('destino').value.trim();
-    if (!texto) {
-      mostrarError("Por favor escribe la dirección o barrio de destino.");
-      return;
+    <div style="margin-top:10px" class="muted">Precio calculado:</div>
+    <div id="precioText" class="price">—</div>
+
+    <div style="margin-top:10px;color:#bfe1ff;font-size:13px"><strong>Fórmula:</strong> Precio = Tarifa base + (costo por km × distancia)</div>
+  </div>
+
+  <div style="margin-top:auto;color:rgba(255,255,255,0.7);font-size:13px">Abre el mapa, selecciona o escribe las direcciones. El calculador usará OpenStreetMap (Nominatim) para autocompletar y OSRM para la ruta.</div>
+</aside>
+
+<section id="map"></section>
+
+  </main>  <footer>DINÁMICA AXM • Armenia, Quindío</footer>  <!-- Leaflet JS -->  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-o9N1j7k5fN1fYkJgX1p7rT1Qe0kM4bVYbXk6t7rV0Rk=" crossorigin=""></script>  <script>
+    // Parámetros de tarifa (puedes modificarlos aquí si lo deseas)
+    const TARIFA_BASE = 5000;
+    const COSTO_POR_KM = 1000;
+
+    document.getElementById('tarifaBaseText').innerText = `$${TARIFA_BASE.toLocaleString('es-CO')}`;
+
+    // Inicializar mapa centrado en Armenia, Quindío
+    const map = L.map('map', {zoomControl:true, preferCanvas:true}).setView([4.533333, -75.681111], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let markerOrigen = null;
+    let markerDestino = null;
+    let routeLayer = null;
+
+    function fitMapToMarkers(){
+      const group = new L.featureGroup([].concat(markerOrigen||[], markerDestino||[]));
+      if(group.getLayers().length) map.fitBounds(group.getBounds().pad(0.3));
     }
 
-    const query = encodeURIComponent(texto + ', Armenia, Quindío, Colombia');
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${query}`;
-    try {
-      const resp = await fetch(url, {headers:{"Accept-Language":"es"}});
-      const data = await resp.json();
-      if (data && data[0]) {
-        const lat = parseFloat(data[0].lat);
-        const lon = parseFloat(data[0].lon);
-        if (!dentroArmenia(lat, lon)) {
-          mostrarError("La dirección destino está fuera de Armenia, Quindío.");
-          return;
-        }
-        const destinoLatLng = {lat: lat, lng: lon};
-        const distancia = calcularDistancia(userLatLng, destinoLatLng);
-        const precio = calcularPrecio(distancia);
-        if (marcadorDestino) map.removeLayer(marcadorDestino);
-        marcadorDestino = L.marker([lat, lon]).addTo(map).bindPopup("Destino").openPopup();
-        map.fitBounds([[userLatLng.lat, userLatLng.lng],[lat, lon]], {padding: [25,25]});
-        if (precio) {
-          mostrarResultado(
-            `Distancia: ${(distancia/1000).toFixed(2)} km<br>
-             <span style="color:#1976d2;">Precio del domicilio: <b>$${precio.toLocaleString('es-CO')}</b> COP</span>`
-          );
+    // Geocoding (Nominatim) - búsqueda y autocompletado
+    async function nominatimSearch(q){
+      if(!q) return [];
+      const params = new URLSearchParams({q, format:'json', addressdetails:1, limit:6, countrycodes:'co', city:'Armenia'});
+      // Note: Nominatim public instance has usage limits. For producción, considera tu propio servicio o proveedor.
+      const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+      const res = await fetch(url, {headers:{'Accept':'application/json'}});
+      if(!res.ok) return [];
+      const data = await res.json();
+      return data;
+    }
+
+    // Utilidades para mostrar sugerencias
+    function showSuggestions(container, items){
+      container.innerHTML = '';
+      if(!items.length){ container.style.display = 'none'; return; }
+      items.forEach(it=>{
+        const el = document.createElement('div');
+        el.className = 'suggestion';
+        el.innerText = it.display_name;
+        el.addEventListener('click', ()=>{
+          container.style.display = 'none';
+          if(container.id === 'sug-origen') setOrigen([parseFloat(it.lat), parseFloat(it.lon)], it.display_name);
+          else setDestino([parseFloat(it.lat), parseFloat(it.lon)], it.display_name);
+        });
+        container.appendChild(el);
+      });
+      container.style.display = 'block';
+    }
+
+    const inputOrigen = document.getElementById('origen');
+    const inputDestino = document.getElementById('destino');
+    const sugOrigen = document.getElementById('sug-origen');
+    const sugDestino = document.getElementById('sug-destino');
+
+    let typingTimer;
+    [ [inputOrigen, sugOrigen], [inputDestino, sugDestino] ].forEach(([input, container])=>{
+      input.addEventListener('input', ()=>{
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(async ()=>{
+          const q = input.value.trim();
+          if(q.length<3){ container.style.display='none'; return; }
+          const results = await nominatimSearch(q + ' Armenia, Quindío');
+          showSuggestions(container, results.filter(r=>r && r.display_name));
+        }, 300);
+      });
+    });
+
+    // Permitir seleccionar punto al hacer clic en mapa (establece origen o destino según estado)
+    let nextClickIs = 'origen';
+    map.on('click', function(e){
+      if(nextClickIs === 'origen') setOrigen([e.latlng.lat, e.latlng.lng], 'Seleccionado en mapa');
+      else setDestino([e.latlng.lat, e.latlng.lng], 'Seleccionado en mapa');
+    });
+
+    // Controles rápidos: click en input cambia el modo de click en mapa
+    inputOrigen.addEventListener('focus', ()=>{ nextClickIs = 'origen'; });
+    inputDestino.addEventListener('focus', ()=>{ nextClickIs = 'destino'; });
+
+    function setOrigen(latlng, label){
+      if(markerOrigen) map.removeLayer(markerOrigen);
+      markerOrigen = L.marker(latlng, {title:'Origen'}).addTo(map).bindPopup(`<b>Origen</b><br>${label}`).openPopup();
+      inputOrigen.value = label || `${latlng[0].toFixed(5)}, ${latlng[1].toFixed(5)}`;
+      computeRouteIfReady();
+    }
+
+    function setDestino(latlng, label){
+      if(markerDestino) map.removeLayer(markerDestino);
+      markerDestino = L.marker(latlng, {title:'Destino'}).addTo(map).bindPopup(`<b>Destino</b><br>${label}`).openPopup();
+      inputDestino.value = label || `${latlng[0].toFixed(5)}, ${latlng[1].toFixed(5)}`;
+      computeRouteIfReady();
+    }
+
+    // Si hay ambos marcadores, solicitar ruta a OSRM
+    async function computeRouteIfReady(){
+      if(!markerOrigen || !markerDestino) return;
+      const a = markerOrigen.getLatLng();
+      const b = markerDestino.getLatLng();
+
+      // Usamos OSRM public demo server para cálculo de ruta
+      const coords = `${a.lng},${a.lat};${b.lng},${b.lat}`;
+      const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&alternatives=false&steps=false`;
+      try{
+        const res = await fetch(url);
+        const data = await res.json();
+        if(data && data.routes && data.routes.length){
+          const route = data.routes[0];
+          const meters = route.distance; // distancia en metros
+          const seconds = route.duration; // tiempo en segundos
+
+          // dibujar ruta
+          if(routeLayer) map.removeLayer(routeLayer);
+          routeLayer = L.geoJSON(route.geometry, {style:{color:'#58a6ff',weight:5,opacity:0.9}}).addTo(map);
+
+          // actualizar textos
+          const km = (meters/1000);
+          document.getElementById('distanciaText').innerText = `${km.toFixed(2)} km`;
+          const mins = Math.round(seconds/60);
+          document.getElementById('tiempoText').innerText = `${mins} min aprox.`;
+
+          const precio = calcularPrecio(km);
+          document.getElementById('precioText').innerText = `$${precio.toLocaleString('es-CO')}`;
+
+          // ajustar vista
+          const bounds = routeLayer.getBounds();
+          map.fitBounds(bounds.pad(0.15));
         } else {
-          mostrarError("La distancia entre tu ubicación y el destino supera los 8 km. No es posible calcular el precio.");
+          // fallback: cálculo por distancia en línea recta si OSRM falla
+          updateByStraightDistance(a,b);
         }
-      } else {
-        mostrarError("No se encontró la dirección. Intenta ser más específico (ej. 'Barrio Galán, Armenia' o 'Cra 16 #24-70').");
+      }catch(err){
+        console.error('Error al obtener ruta OSRM:',err);
+        updateByStraightDistance(a,b);
       }
-    } catch(e) {
-      mostrarError("Ocurrió un error al buscar la dirección. Intenta de nuevo.");
     }
-  };
-});
-</script>
-</body>
+
+    function calcularPrecio(km){
+      // Aplicar fórmula: tarifa base + costo por km * km
+      // Redondeamos la distancia a 2 decimales para cobrar
+      const kmRounded = Math.ceil(km*100)/100; // subir fracción a favor de la empresa
+      const precio = TARIFA_BASE + Math.round(COSTO_POR_KM * kmRounded);
+      return precio;
+    }
+
+    function updateByStraightDistance(a,b){
+      const R = 6371; // km
+      const lat1 = a.lat*Math.PI/180;
+      const lat2 = b.lat*Math.PI/180;
+      const dLat = (b.lat - a.lat)*Math.PI/180;
+      const dLon = (b.lng - a.lng)*Math.PI/180;
+      const aa = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)*Math.sin(dLon/2);
+      const c = 2*Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
+      const km = R*c;
+
+      if(routeLayer) map.removeLayer(routeLayer);
+      document.getElementById('distanciaText').innerText = `${km.toFixed(2)} km (línea)`;
+      document.getElementById('tiempoText').innerText = `Estimado por distancia aérea`;
+      const precio = calcularPrecio(km);
+      document.getElementById('precioText').innerText = `$${precio.toLocaleString('es-CO')}`;
+
+      // ajustar vista a los marcadores
+      fitMapToMarkers();
+    }
+
+    // Permitir doble click para eliminar marcador
+    map.on('dblclick', function(e){
+      // si hay marker cerca, eliminarlo
+      const nearby = [markerOrigen, markerDestino].find(m=>m && m.getLatLng().distanceTo(e.latlng) < 30);
+      if(nearby){ map.removeLayer(nearby); if(nearby===markerOrigen) markerOrigen=null; else markerDestino=null; if(routeLayer){map.removeLayer(routeLayer); routeLayer=null;} document.getElementById('distanciaText').innerText='—'; document.getElementById('tiempoText').innerText='—'; document.getElementById('precioText').innerText='—'; }
+    });
+
+    // Ajustes UX: click en sugerencia de teclado Enter
+    [inputOrigen,inputDestino].forEach(inp=>{
+      inp.addEventListener('keydown', async (ev)=>{
+        if(ev.key === 'Enter'){
+          ev.preventDefault();
+          const q = inp.value.trim();
+          const results = await nominatimSearch(q + ' Armenia, Quindío');
+          if(results && results.length) {
+            const r = results[0];
+            if(inp === inputOrigen) setOrigen([parseFloat(r.lat), parseFloat(r.lon)], r.display_name);
+            else setDestino([parseFloat(r.lat), parseFloat(r.lon)], r.display_name);
+          }
+        }
+      });
+    });
+
+    // Coloca puntos de ejemplo (opcional). Puedes comentar estas líneas si no lo quieres.
+    // setOrigen([4.538889, -75.674722], 'Parque de Armenia');
+    // setDestino([4.532, -75.678], 'Terminal de Transportes');
+
+    // Sugerencia: reemplaza el div#logo por una imagen real si tienes el logo
+    // Ej: document.getElementById('logo').innerHTML = '<img src="logo.png" alt="logo" style="width:100%;height:100%;object-fit:cover;border-radius:12px">';
+  </script></body>
 </html>
