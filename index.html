@@ -13,13 +13,15 @@
     #map { height: 300px; }
     .container { padding: 15px; }
     label { display: block; margin-top: 10px; }
-    input { width: 100%; padding: 8px; margin-top: 5px; border: none; border-radius: 5px; }
-    .result { margin-top: 15px; background: #1b263b; padding: 10px; border-radius: 5px; display: flex; align-items: center; justify-content: space-between; }
-    .loading { font-size: 1.2em; color: #ffd60a; }
-    .success { font-size: 1.2em; color: #06d6a0; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; border: none; border-radius: 5px; }
+    .result { margin-top: 15px; background: #1b263b; padding: 10px; border-radius: 5px; position: relative; }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #00b4d8; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .check { color: #00ff88; font-size: 20px; display: inline-block; vertical-align: middle; }
 </style>
 </head>
 <body>
+
 <header>
     <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" alt="Logo">
     <h1>DINÁMICA AXM - Calculador de Precios</h1>
@@ -28,18 +30,21 @@
 <div id="map"></div>
 
 <div class="container">
+    <label>Sector:</label>
+    <select id="sector">
+        <option value="sur">Sur</option>
+        <option value="norte">Norte</option>
+    </select>
+
     <label>Dirección de recogida:</label>
     <input type="text" id="start" placeholder="Ej: Calle 10 #15-20, Armenia Quindío">
-    
+
     <label>Dirección de entrega:</label>
     <input type="text" id="end" placeholder="Ej: Carrera 14 #8-30, Armenia Quindío">
-    
+
     <div class="result">
-        <div>
-            <p>Distancia: <span id="distance">0</span> km</p>
-            <p>Total: <span id="price">$0</span> COP</p>
-        </div>
-        <div id="status"></div>
+        <p>Distancia: <span id="distance">0</span> km <span id="status"></span></p>
+        <p>Total: <span id="price">$0</span> COP</p>
     </div>
 </div>
 
@@ -47,7 +52,8 @@
 <script>
     let map = L.map('map').setView([4.5345, -75.6811], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-    let markers = [];
+
+    let startMarker, endMarker;
 
     async function geocode(address) {
         let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}, Armenia, Quindío, Colombia`;
@@ -56,25 +62,35 @@
         return data.length > 0 ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
     }
 
-    function calcularTarifa(distancia) {
-        if (distancia <= 4) return 5000;
-        if (distancia <= 6) return 6000;
-        if (distancia <= 7) return 7000;
-        return 8000;
+    function calcularPrecio(sector, distancia) {
+        distancia = parseFloat(distancia);
+        if (sector === "sur") {
+            if (distancia <= 4) return 5000;
+            if (distancia <= 6) return 6000;
+            if (distancia <= 7) return 7000;
+            return 8000;
+        } else { // norte
+            if (distancia <= 2) return 5000;
+            if (distancia <= 4) return 6000;
+            if (distancia <= 6) return 7000;
+            return 8000;
+        }
     }
 
     async function calculateRoute() {
         let startAddress = document.getElementById('start').value;
         let endAddress = document.getElementById('end').value;
+        let sector = document.getElementById('sector').value;
+
         if (!startAddress || !endAddress) return;
 
-        document.getElementById('status').innerHTML = '<span class="loading">⏳ Calculando...</span>';
-        
+        document.getElementById('status').innerHTML = '<span class="loader"></span>';
+
         let startCoords = await geocode(startAddress);
         let endCoords = await geocode(endAddress);
 
         if (!startCoords || !endCoords) {
-            document.getElementById('status').innerHTML = '<span style="color:red;">❌ Dirección no encontrada</span>';
+            document.getElementById('status').innerHTML = '';
             return;
         }
 
@@ -84,27 +100,24 @@
 
         if (data.routes && data.routes.length > 0) {
             let distanceKm = (data.routes[0].distance / 1000).toFixed(2);
+            let price = calcularPrecio(sector, distanceKm);
+
             document.getElementById('distance').textContent = distanceKm;
-
-            let price = calcularTarifa(distanceKm);
             document.getElementById('price').textContent = `$${price.toLocaleString('es-CO')}`;
+            document.getElementById('status').innerHTML = '<span class="check">✔</span>';
 
-            document.getElementById('status').innerHTML = '<span class="success">✅</span>';
+            if (startMarker) map.removeLayer(startMarker);
+            if (endMarker) map.removeLayer(endMarker);
 
-            // Limpiar marcadores previos
-            markers.forEach(m => map.removeLayer(m));
-            markers = [];
-
-            // Mostrar marcadores solo al final
-            let startMarker = L.marker(startCoords).addTo(map).bindPopup("Recogida");
-            let endMarker = L.marker(endCoords).addTo(map).bindPopup("Entrega");
-            markers.push(startMarker, endMarker);
+            startMarker = L.marker(startCoords).addTo(map).bindPopup("Recogida");
+            endMarker = L.marker(endCoords).addTo(map).bindPopup("Entrega");
             map.fitBounds([startCoords, endCoords]);
         }
     }
 
     document.getElementById('start').addEventListener('change', calculateRoute);
     document.getElementById('end').addEventListener('change', calculateRoute);
+    document.getElementById('sector').addEventListener('change', calculateRoute);
 </script>
 
 </body>
